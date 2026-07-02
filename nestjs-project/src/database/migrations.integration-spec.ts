@@ -37,6 +37,14 @@ describe('Database migrations (integration)', () => {
       ),
       dataSource.query(`DROP TABLE IF EXISTS "migrations" CASCADE`),
     ]);
+
+    // DROP TABLE does not remove standalone Postgres ENUM types, so the
+    // CreateAuthTokens migration's CREATE TYPE would fail with "already exists"
+    // when replayed against an already-migrated shared DB. Drop it explicitly
+    // after the tables that depend on it are gone.
+    await dataSource.query(
+      `DROP TYPE IF EXISTS "public"."verification_tokens_type_enum" CASCADE`,
+    );
   });
 
   afterAll(async () => {
