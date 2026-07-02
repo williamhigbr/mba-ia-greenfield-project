@@ -48,6 +48,8 @@ _Subprojects in scope:_
 
 **Decision:** A: pg-boss (PostgreSQL-backed queue)
 
+**Libraries:** pg-boss
+
 ---
 
 ## TD-02: Large-File (10GB) Upload Strategy
@@ -79,6 +81,8 @@ _Subprojects in scope:_
 
 **Decision:** A: Presigned **multipart** upload direct-to-storage (S3 multipart)
 
+**Libraries:** @aws-sdk/client-s3, @aws-sdk/s3-request-presigner
+
 ---
 
 ## TD-03: Object-Storage Organization & Presigned Access
@@ -109,6 +113,8 @@ _Subprojects in scope:_
 **Recommendation:** **Option A (single bucket, video-id-keyed prefixes, keys persisted + on-demand presigning)** — the simplest thing to provision and secure across MinIO and S3, with deterministic keys derived from the video's id and clean prefix-based lifecycle rules (including reaping incomplete multipart uploads from TD-02). Persisting storage **keys** rather than full URLs keeps rows environment-agnostic and lets every access be a freshly-signed, short-lived URL.
 
 **Decision:** A: Single bucket + structured key prefixes keyed by video id
+
+**Libraries:** @aws-sdk/client-s3, @aws-sdk/s3-request-presigner
 
 ---
 
@@ -235,6 +241,8 @@ _Subprojects in scope:_
 **Recommendation:** **Option A (presigned GET direct-from-storage, native Range/206)** — it matches the architecture diagram's "Frontend streams from Object Storage" edge, offloads all streaming/download bandwidth to storage (honoring "sem impacto" and scaling), and gets Range/`206` for free from the S3/MinIO layer. Presigned, API-issued, short-lived URLs retain access control (needed for unlisted videos later) without proxying bytes; download reuses the same URL with a content-disposition override. Proxying through the API is disqualified on bandwidth; a public CDN is premature and breaks unlisted access control.
 
 **Decision:** A: Presigned GET direct-from-storage with native Range/206
+
+**Libraries:** @aws-sdk/s3-request-presigner
 
 ---
 
