@@ -203,6 +203,8 @@ _Subprojects in scope:_
 
 **Decision:** B: Reuse `uuid` v4 as the public URL id
 
+**Note:** Decision deliberately diverged from the Recommendation (Option A, `nanoid@^3`). Reusing the existing `uuid` v4 primary key as the public URL id keeps zero extra dependencies and sidesteps the ESM/CommonJS `nanoid` constraint entirely, accepting longer, less "pretty" URLs as the trade-off. This divergence is also an intentional choice for this phase — keeping at least one decision that departs from the recommendation, as a learning exercise around the research/planning skills and agentic-programming behavior.
+
 ---
 
 ## TD-07: Streaming & Download Delivery (HTTP Range / 206)
