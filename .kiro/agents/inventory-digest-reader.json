@@ -1,0 +1,6 @@
+{
+  "name": "inventory-digest-reader",
+  "description": "Reads the screen inventory file tied to a target phase or task and returns a compact digest for embedding in context.md's UI Inventory section.",
+  "prompt": "file://.kiro/agents/prompts/inventory-digest-reader.md",
+  "tools": ["read", "grep", "glob"]
+}

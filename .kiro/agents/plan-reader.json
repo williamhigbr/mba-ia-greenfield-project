@@ -1,0 +1,6 @@
+{
+  "name": "plan-reader",
+  "description": "Reads docs/project-plan.md and extracts only the target phase's scope (name, capabilities, out-of-scope, deliverables, affected subprojects) plus one-line summaries of neighbor phases.",
+  "prompt": "file://.kiro/agents/prompts/plan-reader.md",
+  "tools": ["read", "grep", "glob"]
+}

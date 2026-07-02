@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "figma": {
+      "url": "https://mcp.figma.com/mcp",
+      "oauth": {
+        "clientId": "REPLACE_WITH_YOUR_FIGMA_CLIENT_ID",
+        "oauthScopes": ["files:read"]
+      },
+      "disabled": true
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "decisions-correlator",
+  "description": "Given a scope prose and mode, globs decisions docs, reads only frontmatter, applies a per-mode candidate-pool filter, and returns a ranked shortlist of decisions docs semantically correlated with the scope.",
+  "prompt": "file://.kiro/agents/prompts/decisions-correlator.md",
+  "tools": ["read", "grep", "glob"]
+}

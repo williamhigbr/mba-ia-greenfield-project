@@ -154,6 +154,11 @@ Segurança: senhas com **Argon2**, **JWT** com `JwtAuthGuard` global (opt-out vi
 
 ```
 green-field-ia-project/
+├── .kiro/                               # Configuração do Kiro CLI (IA)
+│   ├── steering/                        # Regras e convenções do projeto
+│   ├── skills/                          # Skills (ativados por descrição)
+│   ├── agents/                          # Agentes especializados (JSON + prompts)
+│   └── settings/                        # MCP servers e configurações locais
 ├── docs/
 │   ├── project-plan.md                  # Planejamento geral do projeto
 │   ├── phases/                          # Planos e implementação por fase
@@ -182,7 +187,7 @@ green-field-ia-project/
 │   ├── tests/                           # E2E (Playwright)
 │   ├── compose.yaml                     # Docker Compose (dev server)
 │   └── Dockerfile.dev
-├── CLAUDE.md                            # Instruções para IA
+├── AGENTS.md                            # Instruções de alto nível para IA (Kiro CLI)
 ├── FC Tube.fig                          # Design system do projeto (Figma)
 ├── whiteboard.png                       # Quadro branco do projeto
 └── README.md

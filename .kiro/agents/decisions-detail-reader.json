@@ -1,0 +1,6 @@
+{
+  "name": "decisions-detail-reader",
+  "description": "Reads decisions documents tied to a target phase or task and extracts per decided TD the Recommendation prose and Libraries line for embedding in context.md.",
+  "prompt": "file://.kiro/agents/prompts/decisions-detail-reader.md",
+  "tools": ["read", "grep", "glob"]
+}
