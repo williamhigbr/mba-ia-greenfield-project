@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
 **Status:** in_progress
-**SIs:** 3/10 completed
+**SIs:** 6/10 completed
 
 ### SI-03.1 — Infra: dependências, configuração e serviços Docker (storage + fila)
 - **Status:** completed
@@ -29,19 +29,31 @@
   - Integration test uploads/downloads parts via Node global `fetch` against the presigned URLs, proving bytes bypass the API entirely.
 
 ### SI-03.4 — QueueService (integração pg-boss)
-- **Status:** pending
-- **Tests:** —
-- **Observations:** none
+- **Status:** completed
+- **Tests:** 3 passing (queue.service.integration-spec.ts, real pg-boss)
+- **Observations:**
+  - `singletonKey` alone does NOT deduplicate on a `standard`-policy queue in pg-boss v10 — the `video-process` queue is created with `policy: 'stately'` (unique index on `(name, state, singleton_key)` for states ≤ active), which is what makes a duplicate enqueue return null.
+  - `retryDelayMax` (from the plan/library-refs) is NOT supported by pg-boss 10.4.2 `RetryOptions` — context7 described a newer version. Dropped `retryDelayMax: 600`; kept `retryLimit`/`retryDelay`/`retryBackoff`. Flag for reconciliation if pg-boss is upgraded.
+  - `createQueue` does not alter an existing queue's policy — re-bootstrapping requires dropping the `pgboss` schema (done in tests when policy changes).
+  - `QueueModule` is not yet imported into `AppModule`; the producer (SI-03.6) and worker (SI-03.9) import it where needed.
 
 ### SI-03.5 — Endpoint: pré-cadastro + iniciar upload (POST /videos)
-- **Status:** pending
-- **Tests:** —
-- **Observations:** none
+- **Status:** completed
+- **Tests:** unit 4 passing (videos.service.spec.ts) + E2E 5 passing (videos-upload-initiate.e2e-spec.ts)
+- **Observations:**
+  - `size` upper bound (10GB) and the `video/*` check are enforced in the service as domain exceptions (FILE_TOO_LARGE 400 / UNSUPPORTED_MEDIA_TYPE 415), NOT in the DTO — a DTO `@Max`/`@Matches` would surface a generic VALIDATION_ERROR instead of the spec-required error codes.
+  - The uuid PK is pre-generated (`randomUUID`) before insert so the storage key can embed the id (TD-06 Decision B — no nanoid).
+  - Added `ChannelsService.findByUserId` for owner resolution.
+  - **Lint (per your directive — Phase-03 files only):** the repo lint baseline is already red (~188 errors from Phase 01/02 mock-heavy specs under `recommendedTypeChecked`). All new Phase-03 files are lint-clean. To achieve that I installed `@types/pg@^8` (pg shipped no types), typed all supertest `res.body` accesses, used `app.get(MailService)` instead of reaching into `AuthService` internals, and avoided `expect.any()`-in-object-literal / untyped `mock.calls`. `channels.service.ts` still carries 6 pre-existing errors (its Phase-02 `as any` block) — deferred to your separate lint cleanup.
 
 ### SI-03.6 — Endpoint: completar upload + enfileirar processamento (POST /videos/:id/complete)
-- **Status:** pending
-- **Tests:** —
-- **Observations:** none
+- **Status:** completed
+- **Tests:** unit 8 passing (videos.service.spec.ts: 4 create + 4 complete) + E2E 5 passing (videos-upload-complete.e2e-spec.ts)
+- **Observations:**
+  - Ownership/state checks factored into a private `loadOwnedVideo` helper (VIDEO_NOT_FOUND → VIDEO_NOT_OWNER order), which SI-03.7 (abort) will reuse.
+  - **Side effect:** `VideosModule` now imports `QueueModule`, so `AppModule → VideosModule → QueueModule` means `QueueService.onModuleInit` (pg-boss `start()` + `createQueue`) runs on every app boot, including all E2E suites; `boss.stop()` on `app.close()`. The initiate E2E was re-run and still passes.
+  - The complete E2E uses the real flow (POST /videos → PUT a real part to the presigned URL via `fetch` → capture the real ETag → complete) so MinIO's `completeMultipartUpload` receives valid ETags. Job enqueue asserted via `dataSource.query` on `pgboss.job`.
+  - E2E `beforeEach` clears `pgboss.job` in addition to videos/channels/users and throttler storage.
 
 ### SI-03.7 — Endpoint: abortar upload (POST /videos/:id/abort-upload)
 - **Status:** pending

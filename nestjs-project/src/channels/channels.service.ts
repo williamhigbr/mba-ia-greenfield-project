@@ -59,4 +59,11 @@ export class ChannelsService {
       );
     });
   }
+
+  /** Resolves the channel owned by a user (1:1). Returns null if none. */
+  async findByUserId(userId: string): Promise<Channel | null> {
+    return this.dataSource
+      .getRepository(Channel)
+      .findOne({ where: { user_id: userId } });
+  }
 }
