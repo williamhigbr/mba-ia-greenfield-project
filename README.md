@@ -44,9 +44,9 @@ O projeto é um monorepo baseado em containers Docker. Cada subprojeto sobe sua 
 - **API** (NestJS 11) — regras de negócio, autenticação (JWT + refresh token rotation), envio de e-mails e acesso ao banco.
 - **Database** (PostgreSQL 17) — usuários, canais e tokens de autenticação.
 - **Email Service** (Mailpit) — captura os e-mails transacionais (confirmação de conta e recuperação de senha) em uma UI local.
-- **Video Worker** (FFmpeg) — processamento de vídeos *(planejado — Fase 03)*.
-- **Object Storage** (S3/MinIO) — arquivos de vídeo e thumbnails *(planejado — Fase 03)*.
-- **Message Queue** — fila de processamento de vídeos *(planejado — Fase 03)*.
+- **Video Worker** (FFmpeg) — processamento assíncrono de vídeos (ffprobe/ffmpeg: duração, metadados e thumbnail); worker standalone que consome a fila.
+- **Object Storage** (MinIO, S3-compatible) — arquivos de vídeo e thumbnails; upload/download direto do navegador via URLs pré-assinadas (a API nunca trafega os bytes).
+- **Message Queue** (pg-boss sobre o PostgreSQL) — fila `video-process` de processamento de vídeos, com dead-letter queue.
 
 O diagrama de arquitetura completo (C4) está em `docs/diagrams/software-arch.mermaid`.
 
@@ -123,7 +123,7 @@ Sufixos: `*.test.ts(x)` (unitário), `*.integration.test.ts(x)` (Route Handlers 
 
 ## ✅ Funcionalidades implementadas
 
-**Fase 01 — Configuração base** e **Fase 02 — Autenticação** estão concluídas (backend + frontend).
+**Fase 01 — Configuração base**, **Fase 02 — Autenticação** e **Fase 03 — Upload e Processamento de Vídeos** estão concluídas (Fase 03 no backend).
 
 ### Autenticação (Fase 02)
 
@@ -150,16 +150,46 @@ Telas e Route Handlers BFF (`next-frontend`):
 
 Segurança: senhas com **Argon2**, **JWT** com `JwtAuthGuard` global (opt-out via `@Public()`), **rotação de refresh token** com detecção de reuso, **rate limiting** (`ThrottlerGuard`) nos endpoints de auth, e sessão no navegador via **iron-session** (cookies HTTP-only).
 
+### Vídeos (Fase 03 — backend)
+
+Fluxo completo de **upload multipart → processamento assíncrono → streaming/download**. Os bytes nunca passam pela API: o navegador envia/baixa direto do object storage via **URLs pré-assinadas** de curta duração; o banco guarda apenas as **chaves** (keys), nunca URLs completas.
+
+- **Upload:** pré-cadastro do vídeo como `draft` e início do multipart no MinIO; a API devolve `uploadId`, a `key` e uma URL pré-assinada por parte. Ao completar, a API finaliza o multipart e **enfileira o processamento** (pg-boss). Abortar remove o rascunho e cancela o multipart.
+- **Processamento:** o `video-worker` (container standalone) consome a fila `video-process`, roda **ffprobe/ffmpeg** (duração, metadados e thumbnail) e transiciona o status. Falhas terminais vão para a dead-letter queue e marcam o vídeo como `failed` com `failure_reason`.
+- **Ciclo de status:** `draft` → `processing` → `ready` | `failed`.
+- **Reprodução:** metadados e redirecionamento (302) para URLs pré-assinadas de stream (inline) e download (`attachment`).
+
+Endpoints da API (`nestjs-project`):
+
+| Método & Rota | Auth | Descrição |
+|---------------|------|-----------|
+| `POST /videos` | JWT | Pré-cadastro (`draft`) + início do upload multipart (retorna id, `uploadId`, key e URLs PUT pré-assinadas) |
+| `POST /videos/:id/complete` | JWT | Finaliza o upload e enfileira o processamento |
+| `POST /videos/:id/abort-upload` | JWT | Aborta o upload em andamento e remove o rascunho (`204`) |
+| `GET /videos/:id` | JWT opcional | Metadados do vídeo (o dono vê estados não-`ready`; anônimos apenas `ready`) |
+| `GET /videos/:id/stream` | Público | Redireciona (302) para URL pré-assinada de streaming |
+| `GET /videos/:id/download` | Público | Redireciona (302) para URL pré-assinada de download (`attachment`) |
+
+Infra: **MinIO** (bucket `streamtube-videos`), **pg-boss** sobre o PostgreSQL (`db`) e o container **`video-worker`** (ffmpeg). Variáveis de ambiente: `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_PART_SIZE` e `QUEUE_SCHEMA`.
+
+> **Verificação manual do fluxo (ponta a ponta):** o ciclo completo foi validado contra a stack rodando em Docker — cadastro/login para obter o JWT, `POST /videos` (draft + início do multipart), `PUT` dos bytes na URL pré-assinada (ETag retornado), `POST /videos/:id/complete` (status → `processing`), processamento assíncrono pelo `video-worker` (status → `ready`, com `durationSeconds`, metadados `codec/width/height/bitRate` extraídos via ffprobe e thumbnail gerado via ffmpeg) e os redirecionamentos `302` de `GET /videos/:id/stream` e `GET /videos/:id/download` para as URLs pré-assinadas. Os bytes recuperados conferem com o arquivo enviado. Observação: como as URLs pré-assinadas apontam para `minio:9000` (hostname interno da rede Docker), as transferências de bytes (`PUT`/`GET` no storage) só funcionam a partir de um container na rede do backend — não diretamente do host.
+
 ## 🛠️ Estrutura do Projeto
 
 ```
 green-field-ia-project/
+├── .kiro/                               # Configuração do Kiro CLI (IA)
+│   ├── steering/                        # Regras e convenções do projeto
+│   ├── skills/                          # Skills (ativados por descrição)
+│   ├── agents/                          # Agentes especializados (JSON + prompts)
+│   └── settings/                        # MCP servers e configurações locais
 ├── docs/
 │   ├── project-plan.md                  # Planejamento geral do projeto
 │   ├── phases/                          # Planos e implementação por fase
 │   │   ├── phase-01-configuracao-base/
 │   │   ├── phase-02-auth/               # Auth (backend)
-│   │   └── phase-02-auth-frontend/      # Auth (frontend)
+│   │   ├── phase-02-auth-frontend/      # Auth (frontend)
+│   │   └── phase-03-videos/             # Upload e processamento de vídeos (backend)
 │   └── diagrams/
 │       └── software-arch.mermaid        # Diagrama de arquitetura (C4)
 ├── nestjs-project/                      # Backend API (NestJS 11)
@@ -167,6 +197,10 @@ green-field-ia-project/
 │   │   ├── auth/                        # Cadastro, login, JWT, refresh, reset de senha
 │   │   ├── users/                       # Entidade e serviço de usuários
 │   │   ├── channels/                    # Canal 1:1 por usuário (nickname do e-mail)
+│   │   ├── videos/                      # Upload multipart, status e reprodução de vídeos
+│   │   ├── storage/                     # StorageService (S3/MinIO, multipart, presigned URLs)
+│   │   ├── queue/                       # QueueService (pg-boss: fila video-process + DLQ)
+│   │   ├── worker/                      # Worker standalone (ffprobe/ffmpeg) do video-worker
 │   │   ├── mail/                        # Envio de e-mails (templates Handlebars)
 │   │   ├── common/                      # Filtros, pipes e exceptions de domínio
 │   │   ├── config/                      # Configs namespaced (Joi)
@@ -182,7 +216,7 @@ green-field-ia-project/
 │   ├── tests/                           # E2E (Playwright)
 │   ├── compose.yaml                     # Docker Compose (dev server)
 │   └── Dockerfile.dev
-├── CLAUDE.md                            # Instruções para IA
+├── AGENTS.md                            # Instruções de alto nível para IA (Kiro CLI)
 ├── FC Tube.fig                          # Design system do projeto (Figma)
 ├── whiteboard.png                       # Quadro branco do projeto
 └── README.md
@@ -194,7 +228,7 @@ green-field-ia-project/
 |------|-----------|--------|
 | **01** | Configuração Base do Projeto | ✅ Concluída |
 | **02** | Cadastro, Login e Gerenciamento de Conta | ✅ Concluída |
-| **03** | Upload e Processamento de Vídeos | ⏳ Planejada |
+| **03** | Upload e Processamento de Vídeos | ✅ Concluída (backend) |
 | **04** | Gerenciamento de Vídeos e Canal | ⏳ Planejada |
 | **05** | Página de Visualização do Vídeo | ⏳ Planejada |
 | **06** | Interações Sociais (Likes, Comentários, Inscrições) | ⏳ Planejada |

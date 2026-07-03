@@ -6,6 +6,10 @@ const requiredEnv = {
   DB_NAME: 'db',
   JWT_SECRET: 'secret',
   JWT_REFRESH_SECRET: 'refresh-secret',
+  S3_ENDPOINT: 'http://minio:9000',
+  S3_BUCKET: 'streamtube',
+  S3_ACCESS_KEY: 'access-key',
+  S3_SECRET_KEY: 'secret-key',
 };
 
 const validate = (env: Record<string, string>) =>
@@ -32,7 +36,10 @@ describe('envValidationSchema — SWAGGER_ENABLED', () => {
   });
 
   it('should apply default false when SWAGGER_ENABLED is not set', () => {
-    const { value, error } = validate({});
+    const { value, error } = validate({}) as {
+      value: { SWAGGER_ENABLED: string };
+      error?: unknown;
+    };
     expect(error).toBeUndefined();
     expect(value.SWAGGER_ENABLED).toBe('false');
   });

@@ -1,0 +1,6 @@
+{
+  "name": "decisions-reader",
+  "description": "Reads and filters technical decisions documents tied to a target phase or task. Returns a compact, structured index of all TDs with their status, scope, topic, decision, and libraries.",
+  "prompt": "file://.kiro/agents/prompts/decisions-reader.md",
+  "tools": ["read", "grep", "glob"]
+}

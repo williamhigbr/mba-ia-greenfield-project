@@ -1,0 +1,6 @@
+{
+  "name": "phases-reader",
+  "description": "Reads prior-phase planning documents and extracts Conventions to Match bullets, Inherited TD Details, and Inherited Deferred Capabilities that downstream phases inherit.",
+  "prompt": "file://.kiro/agents/prompts/phases-reader.md",
+  "tools": ["read", "grep", "glob"]
+}

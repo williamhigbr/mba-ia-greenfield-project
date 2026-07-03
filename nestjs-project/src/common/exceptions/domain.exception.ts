@@ -48,3 +48,53 @@ export class TokenReuseDetectedException extends DomainException {
     );
   }
 }
+
+// --- Videos (Phase 03) ---
+
+export class FileTooLargeException extends DomainException {
+  constructor() {
+    super(
+      'FILE_TOO_LARGE',
+      400,
+      'File exceeds the maximum allowed size of 10GB',
+    );
+  }
+}
+
+export class UnsupportedMediaTypeException extends DomainException {
+  constructor() {
+    super(
+      'UNSUPPORTED_MEDIA_TYPE',
+      415,
+      'Unsupported media type — only video/* content is accepted',
+    );
+  }
+}
+
+export class VideoNotFoundException extends DomainException {
+  constructor() {
+    super('VIDEO_NOT_FOUND', 404, 'Video not found');
+  }
+}
+
+export class VideoNotOwnerException extends DomainException {
+  constructor() {
+    super('VIDEO_NOT_OWNER', 403, 'Video does not belong to the caller');
+  }
+}
+
+export class InvalidUploadStateException extends DomainException {
+  constructor() {
+    super(
+      'INVALID_UPLOAD_STATE',
+      409,
+      'Video is not in an uploadable (draft) state',
+    );
+  }
+}
+
+export class VideoNotReadyException extends DomainException {
+  constructor() {
+    super('VIDEO_NOT_READY', 409, 'Video is not ready for playback yet');
+  }
+}
