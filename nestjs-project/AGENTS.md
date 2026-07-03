@@ -1,4 +1,4 @@
-# CLAUDE.md
+# AGENTS.md
 
 ## Environment Startup Verification
 
@@ -93,7 +93,7 @@ docker compose exec nestjs-api npm run test:e2e   # already configured
 
 Parallel execution causes FK violations, deadlocks, and cross-suite contamination because suites truncate or seed shared tables concurrently.
 
-During active development, run only the tests related to the file being changed (`npm test -- path/to/file.spec.ts`). Before declaring a task done, run the full suite — see the global `CLAUDE.md` → "Definition of Done (Technical)".
+During active development, run only the tests related to the file being changed (`npm test -- path/to/file.spec.ts`). Before declaring a task done, run the full suite — see the global `AGENTS.md` → "Definition of Done (Technical)".
 
 ## Long-running Processes
 
@@ -148,6 +148,21 @@ NestJS with standard module structure. Source lives in `src/`, compiled output i
 
 - Each domain feature gets its own module (e.g., `UsersModule`, `VideosModule`) registered in `AppModule`
 - Controllers handle HTTP routing; Services hold business logic; both are scoped to their module
+
+### Videos (Fase 03)
+
+Upload → async processing → playback. Bytes never pass through the API: the browser transfers directly to/from object storage via short-lived **presigned URLs**; only storage **keys** are persisted.
+
+- **`VideosModule`** — `Video` entity + `VideosService` + `VideosController` (`/videos`). Imports `StorageModule`, `QueueModule`, `AuthModule` (`OptionalJwtAuthGuard`).
+- **`StorageModule`** (`StorageService`) — S3/MinIO client: multipart upload + presigned PUT/GET URLs.
+- **`QueueModule`** (`QueueService`) — pg-boss on the shared `db` (`video-process` queue + DLQ; no separate broker).
+- **Worker** (`src/worker/`, `video-worker` container) — consumes `video-process`, runs ffprobe/ffmpeg (duration, metadata, thumbnail), drives status.
+
+**Endpoints** (`@Controller('videos')`): `POST /videos`, `POST /:id/complete`, `POST /:id/abort-upload` (JWT); `GET /:id` (optional JWT — owner sees non-`ready`), `GET /:id/stream`, `GET /:id/download` (public, 302 → presigned URL). Full contract in `README.md` / Swagger.
+
+**Status (TD-08):** `draft` → `processing` → `ready` | `failed` (terminal failures dead-lettered, `failure_reason` set).
+
+**Infra:** `minio` (bucket `streamtube-videos`), pg-boss on `db`, `video-worker` container. Env: `S3_*` + `QUEUE_SCHEMA`.
 
 ## Code Conventions
 

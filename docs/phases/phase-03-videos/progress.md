@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
-**Status:** in_progress
-**SIs:** 9/10 completed
+**Status:** completed
+**SIs:** 10/10 completed
 
 ### SI-03.1 — Infra: dependências, configuração e serviços Docker (storage + fila)
 - **Status:** completed
@@ -87,9 +87,12 @@
   - No competing consumer during tests: the running compose `video-worker` container still runs the old placeholder (`tail -f`), so only the test's own context consumes.
 
 ### SI-03.10 — Documentação: seção de vídeos coerente com o código
-- **Status:** pending
-- **Tests:** —
-- **Observations:** none
+- **Status:** completed
+- **Tests:** — (documentação)
+- **Observations:**
+  - `nestjs-project/AGENTS.md`: added a "Videos (Fase 03)" subsection under Architecture — modules (`VideosModule`/`StorageModule`/`QueueModule` + standalone worker), the six `/videos*` endpoints with auth, the `draft → processing → ready|failed` status cycle, infra (`minio` + bucket `streamtube-videos`, pg-boss on `db`, `video-worker` container) and the `S3_*`/`QUEUE_SCHEMA` env vars. Written in English to match the file.
+  - `README.md`: architecture bullets for Video Worker / Object Storage / Message Queue changed from "planejado — Fase 03" to the implemented description; features intro + phases table row 03 marked "✅ Concluída (backend)"; added a "Vídeos (Fase 03 — backend)" section (upload multipart → processamento → streaming/download + endpoints table); project tree updated with `phase-03-videos/` and the `videos/`, `storage/`, `queue/`, `worker/` backend modules.
+  - Verified against source: queue name `video-process` (+ `video-process-dlq`), env vars in `env.validation.ts`, bucket `streamtube-videos` in `compose.yaml`, and the 6 controller routes — no doc references a nonexistent service/var.
 
 ### Final Verification (DoD) — full-suite run
 - **Date:** 2026-07-03
