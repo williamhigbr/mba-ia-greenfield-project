@@ -1,5 +1,2 @@
 .history/
 settings.local.json
-
-# Kiro MCP config (contains credentials)
-.kiro/settings/mcp.json

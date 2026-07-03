@@ -2,8 +2,8 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@source not "../CLAUDE.md";
-@source not "../../CLAUDE.md";
+@source not "../AGENTS.md";
+@source not "../../AGENTS.md";
 
 :root {
   /* base */
