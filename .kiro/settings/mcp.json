@@ -1,0 +1,31 @@
+{
+  "mcpServers": {
+    "figma": {
+      "url": "https://mcp.figma.com/mcp",
+      "oauth": {
+        "clientId": "REPLACE_WITH_YOUR_FIGMA_CLIENT_ID",
+        "oauthScopes": [
+          "files:read"
+        ]
+      },
+      "disabled": true
+    },
+    "postgres": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "postgresql://streamtube:streamtube@localhost/streamtube"
+      ]
+    },
+    "context7": {
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "Authorization": "Bearer $CONTEXT7_API_KEY"
+      },
+      "autoApprove": [
+        "resolve-library-id"
+      ]
+    }
+  }
+}
