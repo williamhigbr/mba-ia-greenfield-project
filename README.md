@@ -172,6 +172,8 @@ Endpoints da API (`nestjs-project`):
 
 Infra: **MinIO** (bucket `streamtube-videos`), **pg-boss** sobre o PostgreSQL (`db`) e o container **`video-worker`** (ffmpeg). Variáveis de ambiente: `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_PART_SIZE` e `QUEUE_SCHEMA`.
 
+> **Verificação manual do fluxo (ponta a ponta):** o ciclo completo foi validado contra a stack rodando em Docker — cadastro/login para obter o JWT, `POST /videos` (draft + início do multipart), `PUT` dos bytes na URL pré-assinada (ETag retornado), `POST /videos/:id/complete` (status → `processing`), processamento assíncrono pelo `video-worker` (status → `ready`, com `durationSeconds`, metadados `codec/width/height/bitRate` extraídos via ffprobe e thumbnail gerado via ffmpeg) e os redirecionamentos `302` de `GET /videos/:id/stream` e `GET /videos/:id/download` para as URLs pré-assinadas. Os bytes recuperados conferem com o arquivo enviado. Observação: como as URLs pré-assinadas apontam para `minio:9000` (hostname interno da rede Docker), as transferências de bytes (`PUT`/`GET` no storage) só funcionam a partir de um container na rede do backend — não diretamente do host.
+
 ## 🛠️ Estrutura do Projeto
 
 ```
