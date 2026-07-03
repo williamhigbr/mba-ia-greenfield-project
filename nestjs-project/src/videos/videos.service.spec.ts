@@ -8,6 +8,7 @@ import {
   UnsupportedMediaTypeException,
   VideoNotFoundException,
   VideoNotOwnerException,
+  VideoNotReadyException,
 } from '../common/exceptions/domain.exception';
 import { QueueService } from '../queue/queue.service';
 import { StorageService } from '../storage/storage.service';
@@ -21,12 +22,15 @@ describe('VideosService', () => {
     create: jest.Mock;
     save: jest.Mock;
     findOne: jest.Mock;
+    remove: jest.Mock;
   };
   let storageService: {
     partSize: number;
     createMultipartUpload: jest.Mock;
     presignPartUrls: jest.Mock;
     completeMultipartUpload: jest.Mock;
+    abortMultipartUpload: jest.Mock;
+    presignGetUrl: jest.Mock;
   };
   let channelsService: { findByUserId: jest.Mock };
   let queueService: { enqueueVideoProcessing: jest.Mock };
@@ -44,6 +48,7 @@ describe('VideosService', () => {
         return Promise.resolve(v);
       }),
       findOne: jest.fn(() => Promise.resolve(null)),
+      remove: jest.fn((v: Video) => Promise.resolve(v)),
     };
     storageService = {
       partSize: 100 * 1024 * 1024, // 100MB
@@ -57,6 +62,15 @@ describe('VideosService', () => {
         ),
       ),
       completeMultipartUpload: jest.fn(() => Promise.resolve()),
+      abortMultipartUpload: jest.fn(() => Promise.resolve()),
+      presignGetUrl: jest.fn(
+        (key: string, opts?: { downloadFilename?: string }) =>
+          Promise.resolve(
+            opts?.downloadFilename
+              ? `https://storage/get/${key}?response-content-disposition=attachment`
+              : `https://storage/get/${key}`,
+          ),
+      ),
     };
     channelsService = {
       findByUserId: jest.fn(() => Promise.resolve(channel)),
@@ -215,6 +229,166 @@ describe('VideosService', () => {
       const saved = savedVideo as Video;
       expect(saved.status).toBe(VideoStatus.PROCESSING);
       expect(saved.upload_id).toBeNull();
+    });
+  });
+
+  describe('abortUpload', () => {
+    function draftVideo(overrides?: Partial<Video>): Video {
+      return {
+        id: 'video-1',
+        channel_id: channel.id,
+        status: VideoStatus.DRAFT,
+        upload_id: 'upload-123',
+        original_key: 'videos/video-1/original.mp4',
+        ...overrides,
+      } as Video;
+    }
+
+    it('throws VIDEO_NOT_OWNER when the video belongs to another channel', async () => {
+      videoRepository.findOne.mockResolvedValueOnce(
+        draftVideo({ channel_id: 'other-channel' }),
+      );
+      await expect(service.abortUpload(user, 'video-1')).rejects.toBeInstanceOf(
+        VideoNotOwnerException,
+      );
+      expect(storageService.abortMultipartUpload).not.toHaveBeenCalled();
+      expect(videoRepository.remove).not.toHaveBeenCalled();
+    });
+
+    it('throws INVALID_UPLOAD_STATE when the video is not a draft', async () => {
+      videoRepository.findOne.mockResolvedValueOnce(
+        draftVideo({ status: VideoStatus.PROCESSING }),
+      );
+      await expect(service.abortUpload(user, 'video-1')).rejects.toBeInstanceOf(
+        InvalidUploadStateException,
+      );
+      expect(storageService.abortMultipartUpload).not.toHaveBeenCalled();
+      expect(videoRepository.remove).not.toHaveBeenCalled();
+    });
+
+    it('aborts the multipart on storage and removes the draft row', async () => {
+      const video = draftVideo();
+      videoRepository.findOne.mockResolvedValueOnce(video);
+
+      await service.abortUpload(user, 'video-1');
+
+      expect(storageService.abortMultipartUpload).toHaveBeenCalledWith(
+        'videos/video-1/original.mp4',
+        'upload-123',
+      );
+      expect(videoRepository.remove).toHaveBeenCalledWith(video);
+    });
+  });
+
+  describe('getVideoView', () => {
+    function video(overrides?: Partial<Video>): Video {
+      return {
+        id: 'video-1',
+        channel_id: channel.id,
+        title: 'My Clip',
+        status: VideoStatus.READY,
+        original_key: 'videos/video-1/original.mp4',
+        thumbnail_key: 'thumbnails/video-1/thumb.jpg',
+        duration_seconds: 42,
+        metadata: { width: 1920, height: 1080 },
+        created_at: new Date('2026-07-03T00:00:00.000Z'),
+        ...overrides,
+      } as Video;
+    }
+
+    it('throws VIDEO_NOT_FOUND when no video matches the id', async () => {
+      videoRepository.findOne.mockResolvedValueOnce(null);
+      await expect(service.getVideoView('missing')).rejects.toBeInstanceOf(
+        VideoNotFoundException,
+      );
+    });
+
+    it('hides a non-ready video from an anonymous caller (VIDEO_NOT_FOUND)', async () => {
+      videoRepository.findOne.mockResolvedValueOnce(
+        video({ status: VideoStatus.PROCESSING }),
+      );
+      await expect(service.getVideoView('video-1')).rejects.toBeInstanceOf(
+        VideoNotFoundException,
+      );
+      expect(storageService.presignGetUrl).not.toHaveBeenCalled();
+    });
+
+    it('lets the owner see a non-ready video', async () => {
+      videoRepository.findOne.mockResolvedValueOnce(
+        video({ status: VideoStatus.PROCESSING, thumbnail_key: null }),
+      );
+      const view = await service.getVideoView('video-1', user);
+      expect(view.status).toBe(VideoStatus.PROCESSING);
+      expect(view.thumbnailUrl).toBeNull();
+    });
+
+    it('returns a presigned thumbnailUrl for a ready video', async () => {
+      videoRepository.findOne.mockResolvedValueOnce(video());
+      const view = await service.getVideoView('video-1');
+      expect(view).toMatchObject({
+        id: 'video-1',
+        title: 'My Clip',
+        status: VideoStatus.READY,
+        durationSeconds: 42,
+        metadata: { width: 1920, height: 1080 },
+        createdAt: '2026-07-03T00:00:00.000Z',
+      });
+      expect(storageService.presignGetUrl).toHaveBeenCalledWith(
+        'thumbnails/video-1/thumb.jpg',
+      );
+      expect(view.thumbnailUrl).toBe(
+        'https://storage/get/thumbnails/video-1/thumb.jpg',
+      );
+    });
+  });
+
+  describe('getStreamRedirect / getDownloadRedirect', () => {
+    function video(overrides?: Partial<Video>): Video {
+      return {
+        id: 'video-1',
+        channel_id: channel.id,
+        title: 'My Clip',
+        status: VideoStatus.READY,
+        original_key: 'videos/video-1/original.mp4',
+        ...overrides,
+      } as Video;
+    }
+
+    it('getStreamRedirect throws VIDEO_NOT_READY when the video is not ready', async () => {
+      videoRepository.findOne.mockResolvedValueOnce(
+        video({ status: VideoStatus.PROCESSING }),
+      );
+      await expect(service.getStreamRedirect('video-1')).rejects.toBeInstanceOf(
+        VideoNotReadyException,
+      );
+    });
+
+    it('getStreamRedirect returns a presigned GET URL for a ready video', async () => {
+      videoRepository.findOne.mockResolvedValueOnce(video());
+      const url = await service.getStreamRedirect('video-1');
+      expect(storageService.presignGetUrl).toHaveBeenCalledWith(
+        'videos/video-1/original.mp4',
+      );
+      expect(url).toBe('https://storage/get/videos/video-1/original.mp4');
+    });
+
+    it('getDownloadRedirect throws VIDEO_NOT_READY when the video is not ready', async () => {
+      videoRepository.findOne.mockResolvedValueOnce(
+        video({ status: VideoStatus.FAILED }),
+      );
+      await expect(
+        service.getDownloadRedirect('video-1'),
+      ).rejects.toBeInstanceOf(VideoNotReadyException);
+    });
+
+    it('getDownloadRedirect returns a presigned URL with attachment disposition', async () => {
+      videoRepository.findOne.mockResolvedValueOnce(video());
+      const url = await service.getDownloadRedirect('video-1');
+      expect(storageService.presignGetUrl).toHaveBeenCalledWith(
+        'videos/video-1/original.mp4',
+        { downloadFilename: 'My Clip.mp4' },
+      );
+      expect(url).toContain('response-content-disposition=attachment');
     });
   });
 });

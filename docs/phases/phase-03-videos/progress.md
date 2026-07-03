@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
 **Status:** in_progress
-**SIs:** 6/10 completed
+**SIs:** 9/10 completed
 
 ### SI-03.1 — Infra: dependências, configuração e serviços Docker (storage + fila)
 - **Status:** completed
@@ -56,19 +56,35 @@
   - E2E `beforeEach` clears `pgboss.job` in addition to videos/channels/users and throttler storage.
 
 ### SI-03.7 — Endpoint: abortar upload (POST /videos/:id/abort-upload)
-- **Status:** pending
-- **Tests:** —
-- **Observations:** none
+- **Status:** completed
+- **Tests:** unit 11 passing (videos.service.spec.ts: 4 create + 4 complete + 3 abort) + E2E 4 passing (videos-upload-abort.e2e-spec.ts)
+- **Observations:**
+  - `abortUpload` reuses the `loadOwnedVideo` helper (VIDEO_NOT_FOUND → VIDEO_NOT_OWNER), then guards `status === draft` (else INVALID_UPLOAD_STATE), calls `storage.abortMultipartUpload(original_key, upload_id)` and `videoRepository.remove(video)`.
+  - Controller handler `POST :id/abort-upload` uses `@HttpCode(204)` (no body); swagger documents 204/401/403/404/409.
+  - E2E `createDraft` helper does not upload any part — draft creation already initiates a real multipart upload (real UploadId), which is what abort releases. `createProcessingVideo` drives a draft to `processing` for the non-draft-state case (1.3).
 
 ### SI-03.8 — Endpoints: metadados, streaming e download (GET /videos/:id, /stream, /download)
-- **Status:** pending
-- **Tests:** —
-- **Observations:** none
+- **Status:** completed
+- **Tests:** unit 19 passing (videos.service.spec.ts: +4 getVideoView +4 stream/download) + E2E 5 passing (videos-playback.e2e-spec.ts)
+- **Observations:**
+  - **Optional auth on a public route:** the global `JwtAuthGuard` short-circuits on `@Public()` and never populates `request.user`. Created `src/auth/guards/optional-jwt-auth.guard.ts` (`OptionalJwtAuthGuard`) — verifies the bearer token if present, sets `request.user`, and treats a missing/invalid token as anonymous (always returns `true`). Applied to `GET /videos/:id` via `@Public() @UseGuards(OptionalJwtAuthGuard)` so the owner sees non-`ready` videos while anonymous callers only see `ready`. Guard registered in `AuthModule` providers+exports; `VideosModule` now imports `AuthModule` (which exports `JwtModule`) so the guard's `JwtService` dep resolves.
+  - `getVideoView(id, user?)` → visibility rule + presigned `thumbnailUrl` (only when `ready` and `thumbnail_key` set). Returns `VideoView` (id/title/status/durationSeconds/metadata/thumbnailUrl/createdAt).
+  - `getStreamRedirect`/`getDownloadRedirect` share a private `loadReadyVideo` (VIDEO_NOT_FOUND → VIDEO_NOT_READY), then `presignGetUrl(original_key)` (download adds `downloadFilename` → `attachment` disposition). Controller uses `@Redirect()` returning `{ url, statusCode: 302 }` for dynamic redirect.
+  - Added `VideoNotReadyException` (409) to domain.exception.ts.
+  - E2E `createVideo` helper POSTs a draft (resolves channel + original_key) then load-mutate-saves the row to the target state — no real processing needed. NOTE: had to use load+`save` instead of `repository.update(...)` because TypeORM's `_QueryDeepPartialEntity` rejects a `Partial<Video>` whose `metadata` is `Record<string, unknown>` (jsonb) — tsc error TS2345.
+  - E2E asserts presigned URL via `X-Amz-Signature` (stream) and `response-content-disposition=attachment` (download); supertest does not follow redirects by default so `res.headers.location` is inspectable.
 
 ### SI-03.9 — Video worker: processamento (ffprobe/thumbnail) + ciclo de status + dead-letter
-- **Status:** pending
-- **Tests:** —
-- **Observations:** none
+- **Status:** completed
+- **Tests:** unit 5 passing (src/worker/video-processing.service.spec.ts) + integration 1 passing (src/worker/video-processing.service.integration-spec.ts — real pg-boss + MinIO + ffmpeg, end-to-end job)
+- **Observations:**
+  - Created `src/worker/main.ts` (bootstrap `NestFactory.createApplicationContext(WorkerModule)` + `enableShutdownHooks`), `src/worker/worker.module.ts` (lean: ConfigModule.forRoot + TypeOrm.forRootAsync[autoLoadEntities] + `forFeature([Video, Channel, User])` for the relation graph + StorageModule + QueueModule; providers VideoProcessingService + MediaProcessorService), `src/worker/media-processor.service.ts` (injectable `spawn` wrapper: `ffprobe -print_format json -show_format -show_streams` → duration+metadata{width,height,codec,bitRate,container}; `ffmpeg -ss <t> -frames:v 1 -q:v 2` → thumbnail), `src/worker/video-processing.service.ts` (registers `boss.work(VIDEO_PROCESS_QUEUE)` + `boss.work(VIDEO_PROCESS_DLQ)` in onModuleInit; `processVideo(videoId)`: load→skip if already ready (idempotent) / warn if missing / throw if no original_key; mkdtemp→downloadToFile→probe→extractThumbnail(at min(1,dur/2))→putObject(thumbnailKey,'image/jpeg')→save status=ready+duration+metadata+thumbnail_key+failure_reason=null; finally rm workdir; `markFailed(videoId, reason?)`: DLQ handler sets status=failed+failure_reason).
+  - Added `StorageService.downloadToFile(key, destPath)` — streams GetObject Body (Readable) to a file via `stream/promises pipeline` (avoids buffering multi-GB in memory).
+  - Wired worker start: `package.json` scripts `start:worker`/`start:worker:dev`/`start:worker:prod` (`nest start --entryFile worker/main`); `Dockerfile.worker` CMD → `npm run start:worker:dev`; `compose.yaml` video-worker `command: npm run start:worker:dev`.
+  - **ffmpeg location gotcha:** ffmpeg/ffprobe live only in the worker image, NOT in the API image. Since the Deliverables full suite runs `npm test` in the **api** container, added `ffmpeg` to `Dockerfile.dev` (api dev image) and **rebuilt** the api image — verified the worker integration spec now passes in BOTH the worker and api containers. (If the api image is ever rebuilt fresh, it will include ffmpeg via the Dockerfile.)
+  - Module init order guarantee: `QueueModule` is imported by `WorkerModule`, so `QueueService.onModuleInit` (boss.start + createQueue) runs before `VideoProcessingService.onModuleInit` (boss.work) — no race.
+  - Test fixture: generated a tiny 11KB 2s h264 320×240 `test/fixtures/sample.mp4` via the worker's ffmpeg (`testsrc` lavfi). Integration test seeds user+channel+video(processing), uploads the sample to MinIO at original_key, enqueues, then polls the DB until `ready` (45s deadline); asserts duration>0, metadata{width:320,height:240,codec:'h264'}, thumbnail_key + thumbnail object retrievable. Cleanup uses `TRUNCATE TABLE "users" CASCADE` (users has FK dependents refresh_tokens/verification_tokens — ordered DELETE failed).
+  - No competing consumer during tests: the running compose `video-worker` container still runs the old placeholder (`tail -f`), so only the test's own context consumes.
 
 ### SI-03.10 — Documentação: seção de vídeos coerente com o código
 - **Status:** pending

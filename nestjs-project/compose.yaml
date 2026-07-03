@@ -19,6 +19,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker
+    # Consumes the pg-boss `video-process` queue (TD-04). Shares node_modules
+    # with the API via the mounted volume — run `npm install` on the API once.
+    command: npm run start:worker:dev
     volumes:
       - .:/home/node/app
     depends_on:

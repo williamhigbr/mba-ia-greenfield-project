@@ -1,6 +1,8 @@
 FROM node:25.6.0-slim
 
-RUN apt update && apt install -y procps curl
+# ffmpeg/ffprobe are required by the video-worker integration test, which runs
+# as part of the backend test suite in this container (TD-05).
+RUN apt update && apt install -y procps curl ffmpeg
 
 WORKDIR /home/node/app
 

@@ -8,4 +8,7 @@ WORKDIR /home/node/app
 
 USER node
 
-CMD [ "tail", "-f", "/dev/null" ]
+# Consumes the pg-boss `video-process` queue (TD-04). node_modules is provided
+# via the mounted volume (shared with the API) — run `npm install` once on the
+# API service first, as documented in the README.
+CMD [ "npm", "run", "start:worker:dev" ]

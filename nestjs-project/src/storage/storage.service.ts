@@ -11,6 +11,9 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Inject, Injectable } from '@nestjs/common';
+import { createWriteStream } from 'fs';
+import { Readable } from 'stream';
+import { pipeline } from 'stream/promises';
 import type { ConfigType } from '@nestjs/config';
 import storageConfig from '../config/storage.config';
 
@@ -177,5 +180,21 @@ export class StorageService {
     await this.client.send(
       new DeleteObjectCommand({ Bucket: this.bucket, Key: key }),
     );
+  }
+
+  /**
+   * Streams an object to a local file path. Used by the worker to fetch the
+   * original before shelling out to ffprobe/ffmpeg, which operate on files
+   * (TD-05). Streaming avoids buffering multi-GB videos in memory.
+   */
+  async downloadToFile(key: string, destPath: string): Promise<void> {
+    const res = await this.client.send(
+      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+    );
+    const body = res.Body;
+    if (!body) {
+      throw new Error(`Storage object ${key} has no body`);
+    }
+    await pipeline(body as Readable, createWriteStream(destPath));
   }
 }
