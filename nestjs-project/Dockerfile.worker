@@ -1,0 +1,11 @@
+FROM node:25.6.0-slim
+
+# ffmpeg ships both `ffmpeg` and `ffprobe` — the worker shells out to them via
+# child_process (TD-05: no fluent-ffmpeg wrapper).
+RUN apt update && apt install -y procps curl ffmpeg
+
+WORKDIR /home/node/app
+
+USER node
+
+CMD [ "tail", "-f", "/dev/null" ]
