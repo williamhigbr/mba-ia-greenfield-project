@@ -22,7 +22,7 @@ target_file: test/videos-upload-abort.e2e-spec.ts
 
 **Covers AC:** #1, #2
 **Source:** auto
-**Last sync:** 2026-07-03T00:08:02Z
+**Last sync:** 2026-07-03T15:55:03Z
 
 **Steps:**
   1. POST /videos/:id/abort-upload como owner sobre um vídeo em `draft`
@@ -35,7 +35,7 @@ target_file: test/videos-upload-abort.e2e-spec.ts
 
 **Covers AC:** #3
 **Source:** auto
-**Last sync:** 2026-07-03T00:08:02Z
+**Last sync:** 2026-07-03T15:55:03Z
 
 **Steps:**
   1. POST /videos/:id/abort-upload autenticado como um usuário diferente do dono
@@ -47,7 +47,7 @@ target_file: test/videos-upload-abort.e2e-spec.ts
 
 **Covers AC:** #4
 **Source:** auto
-**Last sync:** 2026-07-03T00:08:02Z
+**Last sync:** 2026-07-03T15:55:03Z
 
 **Steps:**
   1. POST /videos/:id/abort-upload como owner sobre um vídeo já em `processing`
@@ -58,7 +58,7 @@ target_file: test/videos-upload-abort.e2e-spec.ts
 
 **Covers AC:** #1
 **Source:** auto
-**Last sync:** 2026-07-03T00:08:02Z
+**Last sync:** 2026-07-03T15:55:03Z
 
 **Steps:**
   1. POST /videos/:id/abort-upload sem header Authorization

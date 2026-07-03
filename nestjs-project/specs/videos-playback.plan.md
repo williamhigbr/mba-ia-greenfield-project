@@ -22,7 +22,7 @@ Estes endpoints expõem a visão de metadados do vídeo (`GET /videos/:id`) e a 
 
 **Covers AC:** #1
 **Source:** auto
-**Last sync:** 2026-07-03T00:08:02Z
+**Last sync:** 2026-07-03T15:55:03Z
 
 **Steps:**
   1. GET /videos/:id (anônimo) de um vídeo `ready`
@@ -33,7 +33,7 @@ Estes endpoints expõem a visão de metadados do vídeo (`GET /videos/:id`) e a 
 
 **Covers AC:** #2
 **Source:** auto
-**Last sync:** 2026-07-03T00:08:02Z
+**Last sync:** 2026-07-03T15:55:03Z
 
 **Steps:**
   1. GET /videos/:id (anônimo, sem Authorization) de um vídeo em `processing`
@@ -48,7 +48,7 @@ Estes endpoints expõem a visão de metadados do vídeo (`GET /videos/:id`) e a 
 
 **Covers AC:** #3
 **Source:** auto
-**Last sync:** 2026-07-03T00:08:02Z
+**Last sync:** 2026-07-03T15:55:03Z
 
 **Steps:**
   1. GET /videos/:id/stream de um vídeo `ready` (sem seguir redirect)
@@ -59,7 +59,7 @@ Estes endpoints expõem a visão de metadados do vídeo (`GET /videos/:id`) e a 
 
 **Covers AC:** #4
 **Source:** auto
-**Last sync:** 2026-07-03T00:08:02Z
+**Last sync:** 2026-07-03T15:55:03Z
 
 **Steps:**
   1. GET /videos/:id/download de um vídeo `ready` (sem seguir redirect)
@@ -70,7 +70,7 @@ Estes endpoints expõem a visão de metadados do vídeo (`GET /videos/:id`) e a 
 
 **Covers AC:** #5
 **Source:** auto
-**Last sync:** 2026-07-03T00:08:02Z
+**Last sync:** 2026-07-03T15:55:03Z
 
 **Steps:**
   1. GET /videos/:id/stream de um vídeo em `processing`

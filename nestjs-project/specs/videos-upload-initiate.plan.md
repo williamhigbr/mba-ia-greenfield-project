@@ -22,7 +22,7 @@ target_file: test/videos-upload-initiate.e2e-spec.ts
 
 **Covers AC:** #1, #5
 **Source:** auto
-**Last sync:** 2026-07-03T00:08:02Z
+**Last sync:** 2026-07-03T15:55:03Z
 
 **Steps:**
   1. POST /videos com Authorization Bearer válido e body `{ filename: "clip.mp4", contentType: "video/mp4", size: 52428800 }`
@@ -34,7 +34,7 @@ target_file: test/videos-upload-initiate.e2e-spec.ts
 
 **Covers AC:** #2
 **Source:** auto
-**Last sync:** 2026-07-03T00:08:02Z
+**Last sync:** 2026-07-03T15:55:03Z
 
 **Steps:**
   1. POST /videos com body `{ filename: "big.mp4", contentType: "video/mp4", size: 10737418241 }`
@@ -46,7 +46,7 @@ target_file: test/videos-upload-initiate.e2e-spec.ts
 
 **Covers AC:** #3
 **Source:** auto
-**Last sync:** 2026-07-03T00:08:02Z
+**Last sync:** 2026-07-03T15:55:03Z
 
 **Steps:**
   1. POST /videos com body `{ filename: "doc.pdf", contentType: "application/pdf", size: 1024 }`
@@ -57,7 +57,7 @@ target_file: test/videos-upload-initiate.e2e-spec.ts
 
 **Covers AC:** #4
 **Source:** auto
-**Last sync:** 2026-07-03T00:08:02Z
+**Last sync:** 2026-07-03T15:55:03Z
 
 **Steps:**
   1. POST /videos sem header Authorization com body válido
@@ -67,7 +67,7 @@ target_file: test/videos-upload-initiate.e2e-spec.ts
 
 **Covers AC:** #1
 **Source:** auto
-**Last sync:** 2026-07-03T00:08:02Z
+**Last sync:** 2026-07-03T15:55:03Z
 
 **Steps:**
   1. POST /videos autenticado com body vazio `{}` (prova o wiring do ValidationPipe do DTO)

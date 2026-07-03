@@ -22,7 +22,7 @@ target_file: test/videos-upload-complete.e2e-spec.ts
 
 **Covers AC:** #1, #2
 **Source:** auto
-**Last sync:** 2026-07-03T00:08:02Z
+**Last sync:** 2026-07-03T15:55:03Z
 
 **Steps:**
   1. POST /videos/:id/complete como owner com body `{ parts: [{ partNumber: 1, etag: "\"abc123\"" }] }`
@@ -35,7 +35,7 @@ target_file: test/videos-upload-complete.e2e-spec.ts
 
 **Covers AC:** #3
 **Source:** auto
-**Last sync:** 2026-07-03T00:08:02Z
+**Last sync:** 2026-07-03T15:55:03Z
 
 **Steps:**
   1. POST /videos/:id/complete autenticado como um usuário diferente do dono do vídeo
@@ -47,7 +47,7 @@ target_file: test/videos-upload-complete.e2e-spec.ts
 
 **Covers AC:** #4
 **Source:** auto
-**Last sync:** 2026-07-03T00:08:02Z
+**Last sync:** 2026-07-03T15:55:03Z
 
 **Steps:**
   1. POST /videos/:id/complete como owner sobre um vídeo já em `processing`
@@ -58,7 +58,7 @@ target_file: test/videos-upload-complete.e2e-spec.ts
 
 **Covers AC:** #5
 **Source:** auto
-**Last sync:** 2026-07-03T00:08:02Z
+**Last sync:** 2026-07-03T15:55:03Z
 
 **Steps:**
   1. POST /videos/:id/complete como usuário autenticado com um `:id` uuid que não existe
@@ -69,7 +69,7 @@ target_file: test/videos-upload-complete.e2e-spec.ts
 
 **Covers AC:** #1
 **Source:** auto
-**Last sync:** 2026-07-03T00:08:02Z
+**Last sync:** 2026-07-03T15:55:03Z
 
 **Steps:**
   1. POST /videos/:id/complete como owner com body `{}` sem `parts` (prova o wiring do ValidationPipe do DTO)

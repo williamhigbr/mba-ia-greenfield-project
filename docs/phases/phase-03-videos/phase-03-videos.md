@@ -21,7 +21,7 @@ Entregar o fluxo de vídeo do StreamTube ponta a ponta no backend — upload de 
 
 ### SI-03.1 — Infra: dependências, configuração e serviços Docker (storage + fila)
 
-**Description:** Instala as dependências de storage/fila, adiciona a configuração namespaced e sobe os novos containers de infraestrutura (MinIO + worker) — base para todos os SIs seguintes.
+**Description:** Instala as dependências de storage/fila, adiciona a configuração namespaced e sobe os novos containers de infraestrutura (MinIO + worker) — base para todos os SIs seguintes. A **fila** roda sobre o PostgreSQL existente via pg-boss (TD-01) — não há container de broker dedicado; o schema `pgboss` é bootstrapado pela lib no serviço `db` já presente no Compose. Storage (MinIO) e worker sobem como serviços próprios.
 
 **Technical actions:**
 
@@ -39,6 +39,7 @@ Entregar o fluxo de vídeo do StreamTube ponta a ponta no backend — upload de 
 
 - `docker compose up -d` sobe os serviços `minio` e `video-worker` com status `running` além dos serviços existentes.
 - O bucket configurado em `S3_BUCKET` existe no MinIO após o bootstrap.
+- A fila real (pg-boss) fica operacional sobre o serviço `db` do Compose — o schema `pgboss` é criado no boot (nenhum broker dedicado é necessário, per TD-01).
 - Boot da API falha na validação Joi quando qualquer variável `S3_*` obrigatória está ausente.
 
 ---
@@ -295,6 +296,28 @@ _E2E autoradas por `/plan-test-specs`._
 
 ---
 
+### SI-03.10 — Documentação: seção de vídeos coerente com o código
+
+**Description:** Atualiza a documentação-fundação do projeto (equivalente ao CLAUDE.md — `nestjs-project/AGENTS.md` + `README.md`) com a seção de vídeos, refletindo o que foi implementado nos SIs anteriores: módulos, endpoints, ciclo de status e infra (storage/fila/worker). Executada por último para ficar coerente com o código já entregue.
+
+**Technical actions:**
+
+1. Adicionar seção "Vídeos" em `nestjs-project/AGENTS.md` (Architecture) — descrever `VideosModule`/`StorageModule`/`QueueModule` + worker standalone, os endpoints `/videos*`, o ciclo de status (`draft → processing → ready|failed`) e a infra (MinIO, pg-boss sobre o `db`, container `video-worker`), consistente com o código.
+2. Atualizar `README.md` — marcar a Fase 03 como concluída na tabela de fases e adicionar um resumo das rotas/fluxo de vídeo (upload multipart, processamento assíncrono, streaming/download) alinhado ao que foi implementado.
+3. Conferir que toda referência a serviços do Compose (`minio`, `video-worker`, `db`/pg-boss) e às variáveis de ambiente (`S3_*`, fila) bate com o `compose.yaml` e a config reais entregues nos SIs anteriores.
+
+**Tests:** _(empty — documentação)_
+
+**Dependencies:** SI-03.5, SI-03.6, SI-03.7, SI-03.8, SI-03.9 (docs devem refletir os endpoints + worker já implementados)
+
+**Acceptance criteria:**
+
+- `nestjs-project/AGENTS.md` contém uma seção de vídeos que descreve os módulos, endpoints e o ciclo de status realmente implementados (sem divergência de nomes de rota, status ou serviços).
+- `README.md` marca a Fase 03 como concluída e resume o fluxo de vídeo de forma consistente com o código.
+- Nenhuma referência de doc a serviço do Compose ou variável de ambiente aponta para algo inexistente no código entregue.
+
+---
+
 ## Technical Specifications
 
 ### Data Model
@@ -524,8 +547,9 @@ Background processing runs over pg-boss (PostgreSQL-backed queue — no Redis; T
 | SI-03.7 | SI-03.5 | draft criado antes de abortar |
 | SI-03.8 | SI-03.2, SI-03.3 | entidade + StorageService para metadados/streaming/download |
 | SI-03.9 | SI-03.4, SI-03.3, SI-03.2 | fila + storage + entidade para o worker |
+| SI-03.10 | SI-03.5, SI-03.6, SI-03.7, SI-03.8, SI-03.9 | docs refletem endpoints + worker já implementados |
 
-**Ordem de execução (waves):** SI-03.1 → { SI-03.2, SI-03.3, SI-03.4 } → SI-03.5 → { SI-03.6, SI-03.7 }. SI-03.8 e SI-03.9 podem entrar assim que suas dependências (SI-03.2/03.3 e SI-03.2/03.3/03.4, respectivamente) estiverem prontas.
+**Ordem de execução (waves):** SI-03.1 → { SI-03.2, SI-03.3, SI-03.4 } → SI-03.5 → { SI-03.6, SI-03.7 }. SI-03.8 e SI-03.9 podem entrar assim que suas dependências (SI-03.2/03.3 e SI-03.2/03.3/03.4, respectivamente) estiverem prontas. SI-03.10 (documentação) roda por último, após todos os SIs de feature.
 
 ---
 
@@ -540,6 +564,7 @@ Background processing runs over pg-boss (PostgreSQL-backed queue — no Redis; T
 - [ ] SI-03.7 — Endpoint: abortar upload (POST /videos/:id/abort-upload)
 - [ ] SI-03.8 — Endpoints: metadados, streaming e download (GET /videos/:id, /stream, /download)
 - [ ] SI-03.9 — Video worker: processamento (ffprobe/thumbnail) + ciclo de status + dead-letter
+- [ ] SI-03.10 — Documentação: seção de vídeos coerente com o código (`nestjs-project/AGENTS.md` + `README.md`)
 
 **Full test suites:**
 
