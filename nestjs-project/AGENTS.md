@@ -113,7 +113,7 @@ Choose the suffix by what the test really does, not by where the code under test
 
 A test that constructs a `TypeOrmModule.forRoot`, opens a connection, or hits the `db` service **must** be `*.integration-spec.ts`, never `*.spec.ts`. A test that boots the full Nest application and makes HTTP calls **must** be `*.e2e-spec.ts`.
 
-Conventions for **how to write** each kind of test (mocking patterns, AAA structure, override strategies for global guards, etc.) live in `.claude/rules/nestjs-testing.md` and load when you edit a test file.
+Conventions for **how to write** each kind of test (mocking patterns, AAA structure, override strategies for global guards, etc.) live in the Testing section of `.kiro/steering/nestjs-conventions.md`.
 
 ## Jest Configuration
 
